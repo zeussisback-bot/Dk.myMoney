@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-title" content="Dk.myMoney"/>
 <meta name="theme-color" content="#020917"/>
 <title>Dk.myMoney</title>
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Dk.myMoney&quot;,&quot;short_name&quot;:&quot;Dk.myMoney&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%23020917&quot;,&quot;theme_color&quot;:&quot;%23020917&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a3f7c'/%3E%3Ctext x='96' y='120' font-family='Arial' font-weight='900' font-size='80' fill='%23f0b429' text-anchor='middle'%3EDk%3C/text%3E%3C/svg%3E&quot;,&quot;sizes&quot;:&quot;192x192&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;}]}"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231a3f7c'/%3E%3Ctext x='96' y='120' font-family='Arial' font-weight='900' font-size='80' fill='%23f0b429' text-anchor='middle'%3EDk%3C/text%3E%3C/svg%3E"/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -167,13 +169,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#4f8ef7!import
 
     <div class="quick-row">
       <button class="quick-btn" onclick="showPage('add')"><span>&#43;</span><span>Tambah</span></button>
-      <button class="quick-btn" onclick="showPage('ai')"><span>&#129302;</span><span>MoneyAI</span></button>
+      <button class="quick-btn" onclick="showPage('ai')"><span style="font-size:14px;font-weight:900;color:#f0b429;background:linear-gradient(135deg,#1a3f7c,#3b6bbf);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center">DK</span><span>MoneyAI</span></button>
       <button class="quick-btn" onclick="showPage('history')"><span>&#9776;</span><span>Riwayat</span></button>
       <button class="quick-btn" onclick="downloadStatement()"><span>&#128196;</span><span>Unduh</span></button>
     </div>
 
     <div class="ai-banner" onclick="showPage('ai')">
-      <div style="font-size:24px">&#129302;</div>
+      <div style="width:36px;height:36px;background:linear-gradient(135deg,#1a3f7c,#3b6bbf);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#f0b429;flex-shrink:0">DK</div>
       <div style="flex:1">
         <div style="font-weight:700;color:#e8edf8;font-size:14px">Tanya MoneyAI</div>
         <div style="font-size:12px;color:#7a90b8;margin-top:2px">"Berapa boros saya bulan ini?"</div>
@@ -223,12 +225,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#4f8ef7!import
   <div class="page" id="page-ai">
     <div class="page-head">
       <button class="back-btn" onclick="showPage('home')">&#8592; Kembali</button>
-      <div class="page-title">&#129302; MoneyAI</div>
+      <div class="page-title"><span style="background:linear-gradient(135deg,#1a3f7c,#3b6bbf);color:#f0b429;font-size:14px;font-weight:900;padding:4px 10px;border-radius:8px;margin-right:8px">DK</span> MoneyAI</div>
     </div>
     <div class="chat-wrap">
       <div class="chat-messages" id="chat-messages">
         <div class="msg-row">
-          <div class="ai-avatar">&#129302;</div>
+          <div class="ai-avatar" style="background:linear-gradient(135deg,#1a3f7c,#3b6bbf);color:#f0b429;font-size:12px;font-weight:900">DK</div>
           <div class="bubble-ai">Halo! Saya <strong>MoneyAI</strong> &#128075;<br><br>Asisten keuangan pribadi kamu di <strong>Dk.myMoney</strong>. Tanya apa saja tentang transaksi, analisis pengeluaran, atau saran menabung ya!</div>
         </div>
       </div>
@@ -271,7 +273,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#4f8ef7!import
 <div class="nav">
   <button class="nav-item active" id="nav-home" onclick="showPage('home')"><span>&#127968;</span><span>Beranda</span></button>
   <button class="nav-add" onclick="showPage('add')">&#43;</button>
-  <button class="nav-item" id="nav-ai" onclick="showPage('ai')"><span>&#129302;</span><span>MoneyAI</span></button>
+  <button class="nav-item" id="nav-ai" onclick="showPage('ai')"><span style="font-size:14px;font-weight:900;color:#f0b429;background:linear-gradient(135deg,#1a3f7c,#3b6bbf);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center">DK</span><span>MoneyAI</span></button>
   <button class="nav-item" id="nav-history" onclick="showPage('history')"><span>&#9776;</span><span>Riwayat</span></button>
 </div>
 
@@ -428,7 +430,7 @@ function appendMsg(role,html){
   var wrap=document.createElement("div");
   wrap.className="msg-row"+(role==="user"?" user":"");
   if(role==="assistant"){
-    var av=document.createElement("div");av.className="ai-avatar";av.innerHTML="&#129302;";
+    var av=document.createElement("div");av.className="ai-avatar";av.style.background="linear-gradient(135deg,#1a3f7c,#3b6bbf)";av.style.color="#f0b429";av.style.fontSize="12px";av.style.fontWeight="900";av.innerHTML="DK";
     wrap.appendChild(av);
   }
   var bub=document.createElement("div");
