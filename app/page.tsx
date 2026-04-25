@@ -4,27 +4,31 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // ── helpers ──────────────────────────────────────────────────────────────────
 const fmtRp = (n) => "Rp " + Math.abs(n).toLocaleString("id-ID");
 
-const CATEGORIES = [
-  { ico: "🍔", label: "Makan & Minum" },
-  { ico: "🚗", label: "Transportasi" },
-  { ico: "🛒", label: "Belanja" },
-  { ico: "💊", label: "Kesehatan" },
-  { ico: "🎮", label: "Hiburan" },
-  { ico: "📚", label: "Pendidikan" },
-  { ico: "🏠", label: "Rumah" },
-  { ico: "👔", label: "Pakaian" },
-  { ico: "✈️", label: "Liburan" },
-  { ico: "💰", label: "Tabungan" },
-  { ico: "📱", label: "Langganan" },
-  { ico: "🔌", label: "Utilitas" },
-  { ico: "🤝", label: "Sosial" },
-  { ico: "🎁", label: "Hadiah" },
-  { ico: "💼", label: "Bisnis" },
-  { ico: "🏦", label: "Transfer Bank" },
-  { ico: "💳", label: "E-Wallet" },
-  { ico: "💵", label: "Gaji / Pemasukan" },
-  { ico: "⚙️", label: "Lainnya" },
-];
+// Hierarchical categories
+const CAT_TREE = {
+  "🍔 Makan & Minum": ["Makan Siang","Makan Malam","Sarapan","Kopi & Snack","Groceries","Delivery Makanan","Restoran","Warung"],
+  "🚗 Transportasi": ["Bensin","Parkir","Ojek Online","Taksi","Angkutan Umum","Tol","Servis Kendaraan","Cicilan Motor/Mobil"],
+  "🛒 Belanja": ["Supermarket","Online Shop","Pasar","Elektronik","Furnitur","Perlengkapan Rumah","Kosmetik","Aksesoris"],
+  "👔 Pakaian": ["Baju","Celana","Sepatu","Tas","Pakaian Dalam","Jaket","Seragam"],
+  "💊 Kesehatan": ["Dokter","Obat-obatan","Apotek","Rumah Sakit","Gym","Vitamin","Perawatan Gigi","Laboratorium"],
+  "🎮 Hiburan": ["Streaming","Bioskop","Game","Konser","Wisata","Karaoke","Olahraga","Hobi"],
+  "📚 Pendidikan": ["Kursus","Buku","Sekolah","Seminar","Pelatihan","Les Privat","Alat Tulis"],
+  "🏠 Rumah & Properti": ["Sewa/Kos","Cicilan KPR","Renovasi","Furnitur","Kebersihan","Keamanan"],
+  "🔌 Tagihan & Utilitas": ["Listrik","Air","Internet","Telepon","Gas","TV Kabel","Iuran"],
+  "💰 Tabungan & Investasi": ["Tabungan","Reksa Dana","Saham","Emas","Kripto","Deposito","Asuransi"],
+  "🤝 Sosial & Keluarga": ["Arisan","Sumbangan","Hadiah","Kondangan","Acara Keluarga","Donasi"],
+  "💼 Bisnis": ["Modal Usaha","Operasional","Gaji Karyawan","Marketing","Peralatan","Pajak"],
+  "🏦 Transfer Bank": ["Transfer BCA","Transfer BRI","Transfer BNI","Transfer Mandiri","Transfer BSI","Transfer Lainnya"],
+  "💳 E-Wallet": ["GoPay","OVO","Dana","ShopeePay","LinkAja","Flip","Dompet Digital Lain"],
+  "💵 Gaji / Pemasukan": ["Gaji","Bonus","THR","Lembur","Freelance","Komisi"],
+  "📦 Pemasukan Lainnya": ["Penjualan","Sewa","Dividen","Hadiah Uang","Pengembalian Dana","Lainnya Masuk"],
+  "⚙️ Lainnya": ["Denda","Biaya Admin","Tak Terduga","Lain-lain"],
+};
+
+const CATEGORIES = Object.entries(CAT_TREE).map(([k]) => {
+  const parts = k.split(" "); const ico = parts[0]; const label = parts.slice(1).join(" ");
+  return { ico, label };
+});
 
 const BANKS = ["BCA", "BRI", "BNI", "Mandiri", "BSI", "CIMB", "BTN", "Permata"];
 const EWALLETS = ["GoPay", "OVO", "Dana", "ShopeePay", "LinkAja", "Flip"];
@@ -35,21 +39,13 @@ const AI_PROMPTS = [
   "🔥 Kategori paling boros saya",
   "💡 Saran hemat berdasarkan transaksi saya",
   "📈 Tren pengeluaran 3 bulan terakhir",
-  "🎯 Target tabungan, apakah tercapai?",
   "🍔 Berapa habis untuk makan minggu ini?",
   "💸 Berapa boros saya bulan ini?",
   "🏦 Rekap transfer keluar bulan ini",
-  "📉 Pengeluaran terbesar saya apa?",
-  "💰 Berapa rata-rata pengeluaran harian saya?",
-  "🏠 Pengeluaran rumah tangga bulan ini",
-  "🚗 Total biaya transportasi bulan ini",
-  "🍽️ Total pengeluaran makanan bulan ini",
-  "📱 Tagihan & langganan saya apa saja?",
-  "💊 Pengeluaran kesehatan bulan ini",
-  "🎉 Pengeluaran hiburan bulan ini",
-  "📦 Total belanja online bulan ini",
-  "🤔 Apakah pengeluaran saya normal?",
-  "📋 Ringkasan lengkap keuangan bulan ini",
+  "💰 Rata-rata pengeluaran harian saya?",
+  "🎯 Berapa bisa menabung bulan ini?",
+  "📋 Ringkasan keuangan lengkap",
+  "🔄 Rekap transfer & e-wallet",
 ];
 
 const STORAGE_KEY = "dkmymoney_v3";
@@ -80,7 +76,7 @@ function isSessionActive() { try { return sessionStorage.getItem(SESSION_KEY) ==
 function setSession(v) { try { if (v) sessionStorage.setItem(SESSION_KEY, "1"); else sessionStorage.removeItem(SESSION_KEY); } catch {} }
 
 // ── BIOMETRIC via WebAuthn (proper register → authenticate flow) ──────────────
-function getRP_ID() { if (typeof window === "undefined") return "localhost"; return window.location.hostname || "localhost"; }
+function getRP_ID() { if (typeof window==="undefined") return "localhost"; return window.location.hostname||"localhost"; }
 const RP_NAME = "Dk.myMoney";
 
 function b64url(buf) {
@@ -432,6 +428,55 @@ function MoneyAIIcon({ size = 24, boxed = false }) {
 }
 
 // ── ADD ───────────────────────────────────────────────────────────────────────
+
+// ── HIERARCHICAL CATEGORY PICKER ─────────────────────────────────────────────
+function HierarchicalCategoryPicker({ type, selected, onSelect }) {
+  const [openGroup, setOpenGroup] = useState(null);
+  const excludeForMasuk = ["Transfer Bank","E-Wallet","Makan & Minum","Transportasi","Belanja","Pakaian","Kesehatan","Hiburan","Pendidikan","Rumah & Properti","Tagihan & Utilitas","Tabungan & Investasi","Sosial & Keluarga","Bisnis","Lainnya"];
+  const excludeForKeluar = ["Gaji / Pemasukan","Pemasukan Lainnya","Transfer Bank","E-Wallet"];
+  const filteredTree = Object.entries(CAT_TREE).filter(([k]) => {
+    const label = k.split(" ").slice(1).join(" ");
+    if (type === "masuk") return !excludeForMasuk.includes(label);
+    if (type === "keluar") return !excludeForKeluar.includes(label);
+    return true;
+  });
+  return (
+    <div style={{ padding:"0 14px 10px" }}>
+      <div style={{ fontSize:11, color:"#8ab", marginBottom:6 }}>KATEGORI</div>
+      <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+        {filteredTree.map(([k, subs]) => {
+          const parts = k.split(" "); const ico = parts[0]; const label = parts.slice(1).join(" ");
+          const isOpen = openGroup === k; const isSelected = selected && subs.includes(selected);
+          return (
+            <div key={k}>
+              <div onClick={() => setOpenGroup(isOpen ? null : k)}
+                style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", borderRadius:10,
+                  background:isSelected?"#1e3a5f":"#0f1e35", border:`1px solid ${isSelected?"#4da6ff":isOpen?"#2d4a7a":"#1e3a5f"}`, cursor:"pointer" }}>
+                <span style={{ fontSize:18 }}>{ico}</span>
+                <span style={{ flex:1, fontSize:13, color:isSelected?"#4da6ff":"#fff" }}>{label}</span>
+                {isSelected && <span style={{ fontSize:11, color:"#4da6ff" }}>✓ {selected}</span>}
+                <span style={{ color:"#8ab", fontSize:12 }}>{isOpen?"▲":"▼"}</span>
+              </div>
+              {isOpen && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:6, padding:"8px 4px 4px 28px" }}>
+                  {subs.map(sub => (
+                    <div key={sub} onClick={() => { onSelect(sub); setOpenGroup(null); }}
+                      style={{ padding:"5px 12px", borderRadius:20, fontSize:12, cursor:"pointer",
+                        background:selected===sub?"#4da6ff":"#1e3a5f", color:selected===sub?"#fff":"#93c5fd",
+                        border:`1px solid ${selected===sub?"#4da6ff":"#2d4a7a"}` }}>
+                      {sub}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AddScreen({ onSave, onBack, showToast }) {
   const now = new Date();
   const [type, setType] = useState("keluar");
@@ -538,20 +583,13 @@ function AddScreen({ onSave, onBack, showToast }) {
         <div style={{ ...S.irow, margin:0, flex:1 }}><input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ ...S.inp, fontSize:12 }} /></div>
       </div>
 
-      {/* Category */}
+      {/* Category - Hierarchical */}
       {catFilter.length > 0 && (
-        <>
-          <div style={{ padding:"6px 14px 4px", fontSize:11, color:"#8ab" }}>KATEGORI</div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:7, padding:"0 14px 10px" }}>
-            {catFilter.map((c) => (
-              <div key={c.label} onClick={() => setCat(c.label)}
-                style={{ textAlign:"center", padding:"8px 4px", borderRadius:10, background:cat===c.label?"#1e3a5f":"#0a1628", cursor:"pointer", border:`1px solid ${cat===c.label?"#4da6ff":"#1e3a5f"}` }}>
-                <div style={{ fontSize:20, marginBottom:2 }}>{c.ico}</div>
-                <div style={{ fontSize:9, color:cat===c.label?"#4da6ff":"#8ab", lineHeight:1.2 }}>{c.label}</div>
-              </div>
-            ))}
-          </div>
-        </>
+        <HierarchicalCategoryPicker
+          type={type}
+          selected={cat}
+          onSelect={(c) => setCat(c)}
+        />
       )}
 
       {/* Transcript */}
@@ -613,7 +651,7 @@ function AddScreen({ onSave, onBack, showToast }) {
                 <input type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={(e) => {
                   if (e.target.files[0]) {
                     showToast("📷 AI sedang memproses struk...", "#f5a623");
-                    setTimeout(() => { setAmt("85000"); setDesc("Belanja struk"); setShowCamera(false); showToast("✅ Struk berhasil dibaca!"); }, 1500);
+                    setShowCamera(false); showToast("📸 Foto struk diupload! Isi nominal secara manual ya.");
                   }
                 }} />
               </label>
@@ -709,25 +747,157 @@ function AIScreen({ transactions, onBack }) {
     return `Data keuangan user: Saldo ${fmtRp(masuk - keluar)}, Pemasukan ${fmtRp(masuk)}, Pengeluaran ${fmtRp(keluar)}, Kategori terboros: ${top?.[0]} (${fmtRp(top?.[1] || 0)}), Total ${transactions.length} transaksi.`;
   };
 
+  const analyzeOffline = (q, txs) => {
+    const now = new Date();
+    const thisMonth = now.toISOString().slice(0,7);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString().slice(0,7);
+    const thisWeek = txs.filter(t => { const d = new Date(t.date); const diff = (now-d)/(1000*60*60*24); return diff<=7; });
+    const monthTx = txs.filter(t => t.date?.startsWith(thisMonth));
+    const lastMonthTx = txs.filter(t => t.date?.startsWith(lastMonth));
+    const masuk = txs.filter(t=>t.amt>0).reduce((s,t)=>s+t.amt,0);
+    const keluar = txs.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
+    const saldo = masuk - keluar;
+    const monthKeluar = monthTx.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
+    const monthMasuk = monthTx.filter(t=>t.amt>0).reduce((s,t)=>s+t.amt,0);
+    const lastMonthKeluar = lastMonthTx.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
+    const cats = {}; txs.filter(t=>t.amt<0).forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+Math.abs(t.amt);});
+    const topCat = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+    const weekKeluar = thisWeek.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
+    const makanCat = txs.filter(t=>t.amt<0&&(t.cat?.includes("Makan")||t.cat?.includes("Minum"))).reduce((s,t)=>s+Math.abs(t.amt),0);
+    const avgHarian = txs.length>0 ? keluar/30 : 0;
+    const q2 = q.toLowerCase();
+
+    if (q2.includes("analisis") || q2.includes("pengeluaran bulan ini")) {
+      return `📊 *Analisis Bulan ${now.toLocaleString("id-ID",{month:"long"})}*
+
+💸 Total pengeluaran: ${fmtRp(monthKeluar)}
+💰 Total pemasukan: ${fmtRp(monthMasuk)}
+📈 Saldo bulan ini: ${fmtRp(monthMasuk-monthKeluar)}
+
+🔥 Kategori terbesar:
+${topCat.slice(0,3).map((c,i)=>`${i+1}. ${c[0]}: ${fmtRp(c[1])}`).join("
+")}
+
+${monthKeluar>monthMasuk?"⚠️ Pengeluaran melebihi pemasukan bulan ini! Perlu dikurangi.":"✅ Keuangan bulan ini masih terkendali."}`;
+    }
+    if (q2.includes("bulan lalu vs") || q2.includes("bulan lalu")) {
+      const selisih = monthKeluar - lastMonthKeluar;
+      return `📅 *Perbandingan Pengeluaran*
+
+Bulan ini: ${fmtRp(monthKeluar)}
+Bulan lalu: ${fmtRp(lastMonthKeluar)}
+
+${selisih>0?`📈 Naik ${fmtRp(selisih)} (${lastMonthKeluar>0?Math.round(selisih/lastMonthKeluar*100):0}%) dari bulan lalu`:`📉 Turun ${fmtRp(Math.abs(selisih))} dari bulan lalu — Bagus!`}`;
+    }
+    if (q2.includes("boros") || q2.includes("terboros")) {
+      return `🔥 *Kategori Terboros*
+
+${topCat.slice(0,5).map((c,i)=>`${["🥇","🥈","🥉","4️⃣","5️⃣"][i]} ${c[0]}: ${fmtRp(c[1])}`).join("
+")}
+
+💡 Coba kurangi pengeluaran di kategori teratas untuk menghemat lebih banyak.`;
+    }
+    if (q2.includes("saran") || q2.includes("hemat")) {
+      const potensialHemat = topCat[0]?.[1]*0.2||0;
+      return `💡 *Saran Hemat MoneyAI*
+
+1. Kurangi ${topCat[0]?.[0]||"pengeluaran terbesar"} 20% → hemat ${fmtRp(potensialHemat)}/bulan
+2. Siapkan anggaran harian: ${fmtRp(avgHarian)}
+3. Catat semua transaksi rutin agar mudah dikontrol
+4. Target tabungan minimal 10% dari pemasukan: ${fmtRp(monthMasuk*0.1)}
+5. Review pengeluaran setiap minggu`;
+    }
+    if (q2.includes("menabung") || q2.includes("tabungan")) {
+      const bisa = monthMasuk - monthKeluar;
+      return `🎯 *Potensi Tabungan*
+
+Pemasukan: ${fmtRp(monthMasuk)}
+Pengeluaran: ${fmtRp(monthKeluar)}
+
+${bisa>0?`✅ Kamu bisa menabung ${fmtRp(bisa)} bulan ini!
+
+💰 Saran:
+- Tabungan darurat: ${fmtRp(bisa*0.5)}
+- Investasi: ${fmtRp(bisa*0.3)}
+- Bebas pakai: ${fmtRp(bisa*0.2)}`:"⚠️ Bulan ini pengeluaran melebihi pemasukan. Perlu dikurangi dulu sebelum bisa menabung."}`;
+    }
+    if (q2.includes("minggu") || q2.includes("minggu ini")) {
+      return `📆 *Pengeluaran 7 Hari Terakhir*
+
+Total: ${fmtRp(weekKeluar)}
+Rata-rata/hari: ${fmtRp(weekKeluar/7)}
+
+${thisWeek.filter(t=>t.amt<0).slice(0,5).map(t=>`• ${t.desc||t.cat}: ${fmtRp(Math.abs(t.amt))}`).join("
+")||"Belum ada transaksi minggu ini."}`;
+    }
+    if (q2.includes("makan")) {
+      return `🍔 *Pengeluaran Makan & Minum*
+
+Total keseluruhan: ${fmtRp(makanCat)}
+Bulan ini: ${fmtRp(monthTx.filter(t=>t.amt<0&&t.cat?.includes("Makan")).reduce((s,t)=>s+Math.abs(t.amt),0))}
+
+💡 Rata-rata makan per hari: ${fmtRp(makanCat/30)}`;
+    }
+    if (q2.includes("rata-rata") || q2.includes("harian")) {
+      return `📊 *Rata-rata Pengeluaran Harian*
+
+Rata-rata: ${fmtRp(avgHarian)}/hari
+Total pengeluaran: ${fmtRp(keluar)}
+Total transaksi: ${txs.filter(t=>t.amt<0).length} transaksi
+
+${avgHarian>100000?"💡 Cukup tinggi. Coba buat anggaran harian maksimal.":"✅ Masih dalam batas wajar."}`;
+    }
+    if (q2.includes("tren") || q2.includes("3 bulan")) {
+      return `📈 *Tren Pengeluaran*
+
+Bulan ini: ${fmtRp(monthKeluar)}
+Bulan lalu: ${fmtRp(lastMonthKeluar)}
+Total keseluruhan: ${fmtRp(keluar)}
+
+${monthKeluar>lastMonthKeluar?"📈 Tren naik — perlu diwaspadai":"📉 Tren turun — pertahankan!"}`;
+    }
+    if (q2.includes("ringkasan") || q2.includes("rekap")) {
+      return `📋 *Ringkasan Keuangan*
+
+💰 Saldo: ${fmtRp(saldo)}
+📥 Total Masuk: ${fmtRp(masuk)}
+📤 Total Keluar: ${fmtRp(keluar)}
+📊 Transaksi: ${txs.length}
+
+🏆 Top kategori:
+${topCat.slice(0,3).map((c,i)=>`${i+1}. ${c[0]}: ${fmtRp(c[1])}`).join("
+")}`;
+    }
+    if (q2.includes("transfer")) {
+      const transfers = txs.filter(t=>t.cat?.includes("Transfer")||t.cat?.includes("E-Wallet"));
+      return `🏦 *Rekap Transfer*
+
+Total transfer: ${fmtRp(transfers.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0))}
+Jumlah transaksi: ${transfers.length}
+
+${transfers.slice(0,5).map(t=>`• ${t.desc||t.cat}: ${fmtRp(Math.abs(t.amt))}`).join("
+")||"Belum ada transfer."}`;
+    }
+    return `🤖 *MoneyAI*
+
+Saldo kamu saat ini: ${fmtRp(saldo)}
+Total pengeluaran bulan ini: ${fmtRp(monthKeluar)}
+
+Coba tanya:
+• "Analisis pengeluaran saya"
+• "Kategori terboros"
+• "Saran hemat"
+• "Berapa bisa menabung?"
+• "Pengeluaran minggu ini"`;
+  };
+
   const send = async (text) => {
     if (!text.trim()) return;
     setMessages((m) => [...m, { role:"user", text }]);
     setInput(""); setLoading(true);
-    try {
-      const res = await fetch("/api/chat", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({
-          messages:[{ role:"user", content:text }],
-          systemPrompt:`Kamu adalah MoneyAI, asisten keuangan pribadi di Dk.myMoney. Jawab dalam Bahasa Indonesia, singkat, jelas, dan helpful dengan format yang rapi menggunakan emoji. ${ctx()}`,
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setMessages((m) => [...m, { role:"ai", text: data.text || "Maaf, tidak bisa menjawab saat ini." }]);
-    } catch (e) {
-      setMessages((m) => [...m, { role:"ai", text:"Maaf, koneksi bermasalah. Pastikan ANTHROPIC_API_KEY sudah diset di Vercel Environment Variables." }]);
-    }
+    await new Promise(r => setTimeout(r, 600));
+    const reply = analyzeOffline(text, transactions);
+    setMessages((m) => [...m, { role:"ai", text: reply }]);
     setLoading(false);
   };
 
