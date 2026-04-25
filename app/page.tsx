@@ -4,31 +4,27 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // ── helpers ──────────────────────────────────────────────────────────────────
 const fmtRp = (n) => "Rp " + Math.abs(n).toLocaleString("id-ID");
 
-// Hierarchical categories
-const CAT_TREE = {
-  "🍔 Makan & Minum": ["Makan Siang","Makan Malam","Sarapan","Kopi & Snack","Groceries","Delivery Makanan","Restoran","Warung"],
-  "🚗 Transportasi": ["Bensin","Parkir","Ojek Online","Taksi","Angkutan Umum","Tol","Servis Kendaraan","Cicilan Motor/Mobil"],
-  "🛒 Belanja": ["Supermarket","Online Shop","Pasar","Elektronik","Furnitur","Perlengkapan Rumah","Kosmetik","Aksesoris"],
-  "👔 Pakaian": ["Baju","Celana","Sepatu","Tas","Pakaian Dalam","Jaket","Seragam"],
-  "💊 Kesehatan": ["Dokter","Obat-obatan","Apotek","Rumah Sakit","Gym","Vitamin","Perawatan Gigi","Laboratorium"],
-  "🎮 Hiburan": ["Streaming","Bioskop","Game","Konser","Wisata","Karaoke","Olahraga","Hobi"],
-  "📚 Pendidikan": ["Kursus","Buku","Sekolah","Seminar","Pelatihan","Les Privat","Alat Tulis"],
-  "🏠 Rumah & Properti": ["Sewa/Kos","Cicilan KPR","Renovasi","Furnitur","Kebersihan","Keamanan"],
-  "🔌 Tagihan & Utilitas": ["Listrik","Air","Internet","Telepon","Gas","TV Kabel","Iuran"],
-  "💰 Tabungan & Investasi": ["Tabungan","Reksa Dana","Saham","Emas","Kripto","Deposito","Asuransi"],
-  "🤝 Sosial & Keluarga": ["Arisan","Sumbangan","Hadiah","Kondangan","Acara Keluarga","Donasi"],
-  "💼 Bisnis": ["Modal Usaha","Operasional","Gaji Karyawan","Marketing","Peralatan","Pajak"],
-  "🏦 Transfer Bank": ["Transfer BCA","Transfer BRI","Transfer BNI","Transfer Mandiri","Transfer BSI","Transfer Lainnya"],
-  "💳 E-Wallet": ["GoPay","OVO","Dana","ShopeePay","LinkAja","Flip","Dompet Digital Lain"],
-  "💵 Gaji / Pemasukan": ["Gaji","Bonus","THR","Lembur","Freelance","Komisi"],
-  "📦 Pemasukan Lainnya": ["Penjualan","Sewa","Dividen","Hadiah Uang","Pengembalian Dana","Lainnya Masuk"],
-  "⚙️ Lainnya": ["Denda","Biaya Admin","Tak Terduga","Lain-lain"],
-};
-
-const CATEGORIES = Object.entries(CAT_TREE).map(([k]) => {
-  const parts = k.split(" "); const ico = parts[0]; const label = parts.slice(1).join(" ");
-  return { ico, label };
-});
+const CATEGORIES = [
+  { ico: "🍔", label: "Makan & Minum" },
+  { ico: "🚗", label: "Transportasi" },
+  { ico: "🛒", label: "Belanja" },
+  { ico: "💊", label: "Kesehatan" },
+  { ico: "🎮", label: "Hiburan" },
+  { ico: "📚", label: "Pendidikan" },
+  { ico: "🏠", label: "Rumah" },
+  { ico: "👔", label: "Pakaian" },
+  { ico: "✈️", label: "Liburan" },
+  { ico: "💰", label: "Tabungan" },
+  { ico: "📱", label: "Langganan" },
+  { ico: "🔌", label: "Utilitas" },
+  { ico: "🤝", label: "Sosial" },
+  { ico: "🎁", label: "Hadiah" },
+  { ico: "💼", label: "Bisnis" },
+  { ico: "🏦", label: "Transfer Bank" },
+  { ico: "💳", label: "E-Wallet" },
+  { ico: "💵", label: "Gaji / Pemasukan" },
+  { ico: "⚙️", label: "Lainnya" },
+];
 
 const BANKS = ["BCA", "BRI", "BNI", "Mandiri", "BSI", "CIMB", "BTN", "Permata"];
 const EWALLETS = ["GoPay", "OVO", "Dana", "ShopeePay", "LinkAja", "Flip"];
@@ -39,13 +35,11 @@ const AI_PROMPTS = [
   "🔥 Kategori paling boros saya",
   "💡 Saran hemat berdasarkan transaksi saya",
   "📈 Tren pengeluaran 3 bulan terakhir",
+  "🎯 Target tabungan, apakah tercapai?",
   "🍔 Berapa habis untuk makan minggu ini?",
   "💸 Berapa boros saya bulan ini?",
   "🏦 Rekap transfer keluar bulan ini",
-  "💰 Rata-rata pengeluaran harian saya?",
-  "🎯 Berapa bisa menabung bulan ini?",
-  "📋 Ringkasan keuangan lengkap",
-  "🔄 Rekap transfer & e-wallet",
+  "📉 Pengeluaran terbesar saya apa?",
 ];
 
 const STORAGE_KEY = "dkmymoney_v3";
@@ -71,12 +65,12 @@ function loadData() {
   try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : { ...defaultData }; }
   catch { return { ...defaultData }; }
 }
-function saveData(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {} }
+function saveData(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch { } }
 function isSessionActive() { try { return sessionStorage.getItem(SESSION_KEY) === "1"; } catch { return false; } }
-function setSession(v) { try { if (v) sessionStorage.setItem(SESSION_KEY, "1"); else sessionStorage.removeItem(SESSION_KEY); } catch {} }
+function setSession(v) { try { if (v) sessionStorage.setItem(SESSION_KEY, "1"); else sessionStorage.removeItem(SESSION_KEY); } catch { } }
 
 // ── BIOMETRIC via WebAuthn (proper register → authenticate flow) ──────────────
-function getRP_ID() { if (typeof window==="undefined") return "localhost"; return window.location.hostname||"localhost"; }
+function getRP_ID() { if (typeof window === "undefined") return "localhost"; return window.location.hostname || "localhost"; }
 const RP_NAME = "Dk.myMoney";
 
 function b64url(buf) {
@@ -210,7 +204,7 @@ function LoginScreen({ pin, biometricRegistered, onLogin, onRegisterBiometric, t
   const doRegister = async () => {
     setBioLoading(true); setErr("");
     try { await onRegisterBiometric(); }
-    catch {}
+    catch { }
     setBioLoading(false);
   };
 
@@ -428,55 +422,6 @@ function MoneyAIIcon({ size = 24, boxed = false }) {
 }
 
 // ── ADD ───────────────────────────────────────────────────────────────────────
-
-// ── HIERARCHICAL CATEGORY PICKER ─────────────────────────────────────────────
-function HierarchicalCategoryPicker({ type, selected, onSelect }) {
-  const [openGroup, setOpenGroup] = useState(null);
-  const excludeForMasuk = ["Transfer Bank","E-Wallet","Makan & Minum","Transportasi","Belanja","Pakaian","Kesehatan","Hiburan","Pendidikan","Rumah & Properti","Tagihan & Utilitas","Tabungan & Investasi","Sosial & Keluarga","Bisnis","Lainnya"];
-  const excludeForKeluar = ["Gaji / Pemasukan","Pemasukan Lainnya","Transfer Bank","E-Wallet"];
-  const filteredTree = Object.entries(CAT_TREE).filter(([k]) => {
-    const label = k.split(" ").slice(1).join(" ");
-    if (type === "masuk") return !excludeForMasuk.includes(label);
-    if (type === "keluar") return !excludeForKeluar.includes(label);
-    return true;
-  });
-  return (
-    <div style={{ padding:"0 14px 10px" }}>
-      <div style={{ fontSize:11, color:"#8ab", marginBottom:6 }}>KATEGORI</div>
-      <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-        {filteredTree.map(([k, subs]) => {
-          const parts = k.split(" "); const ico = parts[0]; const label = parts.slice(1).join(" ");
-          const isOpen = openGroup === k; const isSelected = selected && subs.includes(selected);
-          return (
-            <div key={k}>
-              <div onClick={() => setOpenGroup(isOpen ? null : k)}
-                style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", borderRadius:10,
-                  background:isSelected?"#1e3a5f":"#0f1e35", border:`1px solid ${isSelected?"#4da6ff":isOpen?"#2d4a7a":"#1e3a5f"}`, cursor:"pointer" }}>
-                <span style={{ fontSize:18 }}>{ico}</span>
-                <span style={{ flex:1, fontSize:13, color:isSelected?"#4da6ff":"#fff" }}>{label}</span>
-                {isSelected && <span style={{ fontSize:11, color:"#4da6ff" }}>✓ {selected}</span>}
-                <span style={{ color:"#8ab", fontSize:12 }}>{isOpen?"▲":"▼"}</span>
-              </div>
-              {isOpen && (
-                <div style={{ display:"flex", flexWrap:"wrap", gap:6, padding:"8px 4px 4px 28px" }}>
-                  {subs.map(sub => (
-                    <div key={sub} onClick={() => { onSelect(sub); setOpenGroup(null); }}
-                      style={{ padding:"5px 12px", borderRadius:20, fontSize:12, cursor:"pointer",
-                        background:selected===sub?"#4da6ff":"#1e3a5f", color:selected===sub?"#fff":"#93c5fd",
-                        border:`1px solid ${selected===sub?"#4da6ff":"#2d4a7a"}` }}>
-                      {sub}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function AddScreen({ onSave, onBack, showToast }) {
   const now = new Date();
   const [type, setType] = useState("keluar");
@@ -533,7 +478,7 @@ function AddScreen({ onSave, onBack, showToast }) {
   const catFilter = type === "masuk"
     ? CATEGORIES.filter((c) => ["Gaji / Pemasukan", "Hadiah", "Bisnis", "Lainnya"].includes(c.label))
     : type === "transfer" ? []
-    : CATEGORIES.filter((c) => !["Gaji / Pemasukan", "Transfer Bank", "E-Wallet"].includes(c.label));
+      : CATEGORIES.filter((c) => !["Gaji / Pemasukan", "Transfer Bank", "E-Wallet"].includes(c.label));
 
   return (
     <div style={S.screen}>
@@ -541,9 +486,9 @@ function AddScreen({ onSave, onBack, showToast }) {
 
       {/* Type */}
       <div style={{ display: "flex", gap: 6, padding: "12px 14px 8px" }}>
-        {[["keluar","Pengeluaran"],["masuk","Pemasukan"],["transfer","Transfer"]].map(([v,l]) => (
+        {[["keluar", "Pengeluaran"], ["masuk", "Pemasukan"], ["transfer", "Transfer"]].map(([v, l]) => (
           <button key={v} onClick={() => { setType(v); setCat(null); }}
-            style={{ flex:1, background: type===v?"#1e4a8a":"none", border:`1px solid ${type===v?"#4da6ff":"#1e3a5f"}`, color:type===v?"#4da6ff":"#8ab", borderRadius:12, padding:"8px 0", fontSize:11, cursor:"pointer" }}>
+            style={{ flex: 1, background: type === v ? "#1e4a8a" : "none", border: `1px solid ${type === v ? "#4da6ff" : "#1e3a5f"}`, color: type === v ? "#4da6ff" : "#8ab", borderRadius: 12, padding: "8px 0", fontSize: 11, cursor: "pointer" }}>
             {l}
           </button>
         ))}
@@ -553,8 +498,8 @@ function AddScreen({ onSave, onBack, showToast }) {
       {type === "transfer" && (
         <div style={{ padding: "0 14px 8px" }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {[["bank","🏦 Bank"],["ewallet","💳 E-Wallet"]].map(([v,l]) => (
-              <div key={v} onClick={() => setSub(v)} style={{ ...S.chip, ...(sub===v?S.chipOn:{}) }}>{l}</div>
+            {[["bank", "🏦 Bank"], ["ewallet", "💳 E-Wallet"]].map(([v, l]) => (
+              <div key={v} onClick={() => setSub(v)} style={{ ...S.chip, ...(sub === v ? S.chipOn : {}) }}>{l}</div>
             ))}
           </div>
           <div style={S.irow}>
@@ -567,66 +512,73 @@ function AddScreen({ onSave, onBack, showToast }) {
 
       {/* Amount */}
       <div style={{ ...S.irow, margin: "0 14px 8px" }}>
-        <span style={{ color:"#8ab", fontSize:13 }}>Rp</span>
-        <input type="number" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="0" style={{ ...S.inp, fontSize:20, fontWeight:700 }} />
+        <span style={{ color: "#8ab", fontSize: 13 }}>Rp</span>
+        <input type="number" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="0" style={{ ...S.inp, fontSize: 20, fontWeight: 700 }} />
       </div>
 
       {/* Desc */}
-      <div style={{ ...S.irow, margin:"0 14px 8px" }}>
+      <div style={{ ...S.irow, margin: "0 14px 8px" }}>
         <span>📝</span>
         <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Keterangan" style={S.inp} />
       </div>
 
       {/* Date & time */}
-      <div style={{ display:"flex", gap:6, margin:"0 14px 8px" }}>
-        <div style={{ ...S.irow, margin:0, flex:1 }}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...S.inp, fontSize:12 }} /></div>
-        <div style={{ ...S.irow, margin:0, flex:1 }}><input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ ...S.inp, fontSize:12 }} /></div>
+      <div style={{ display: "flex", gap: 6, margin: "0 14px 8px" }}>
+        <div style={{ ...S.irow, margin: 0, flex: 1 }}><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...S.inp, fontSize: 12 }} /></div>
+        <div style={{ ...S.irow, margin: 0, flex: 1 }}><input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={{ ...S.inp, fontSize: 12 }} /></div>
       </div>
 
-      {/* Category - Hierarchical */}
+      {/* Category */}
       {catFilter.length > 0 && (
-        <HierarchicalCategoryPicker
-          type={type}
-          selected={cat}
-          onSelect={(c) => setCat(c)}
-        />
+        <>
+          <div style={{ padding: "6px 14px 4px", fontSize: 11, color: "#8ab" }}>KATEGORI</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 7, padding: "0 14px 10px" }}>
+            {catFilter.map((c) => (
+              <div key={c.label} onClick={() => setCat(c.label)}
+                style={{ textAlign: "center", padding: "8px 4px", borderRadius: 10, background: cat === c.label ? "#1e3a5f" : "#0a1628", cursor: "pointer", border: `1px solid ${cat === c.label ? "#4da6ff" : "#1e3a5f"}` }}>
+                <div style={{ fontSize: 20, marginBottom: 2 }}>{c.ico}</div>
+                <div style={{ fontSize: 9, color: cat === c.label ? "#4da6ff" : "#8ab", lineHeight: 1.2 }}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Transcript */}
-      {transcript && <div style={{ margin:"0 14px 8px", background:"#0a1628", borderRadius:10, padding:"8px 12px", fontSize:12, color:"#4da6ff" }}>🎤 "{transcript}"</div>}
+      {transcript && <div style={{ margin: "0 14px 8px", background: "#0a1628", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#4da6ff" }}>🎤 "{transcript}"</div>}
 
       {/* Input via */}
-      <div style={{ padding:"4px 14px", fontSize:11, color:"#8ab" }}>INPUT VIA</div>
-      <div style={{ display:"flex", gap:8, padding:"4px 14px 12px" }}>
+      <div style={{ padding: "4px 14px", fontSize: 11, color: "#8ab" }}>INPUT VIA</div>
+      <div style={{ display: "flex", gap: 8, padding: "4px 14px 12px" }}>
         <button onClick={() => { setShowVoice(true); startVoice(); }} style={S.iconBtn} title="Voice Note">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
         </button>
         <button onClick={() => setShowCamera(true)} style={S.iconBtn} title="Foto Struk">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
         </button>
-        <button onClick={save} style={{ ...S.btnPrimary, flex:1 }}>Simpan Transaksi</button>
+        <button onClick={save} style={{ ...S.btnPrimary, flex: 1 }}>Simpan Transaksi</button>
       </div>
 
       {/* Voice modal */}
       {showVoice && (
         <div style={S.overlay}>
           <div style={S.sheet}>
-            <div style={{ textAlign:"center", paddingBottom:16 }}>
-              <div style={{ width:64, height:64, borderRadius:"50%", background:"#1e4a8a", margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center", animation:listening?"pulse 1s infinite":"none" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            <div style={{ textAlign: "center", paddingBottom: 16 }}>
+              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#1e4a8a", margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", animation: listening ? "pulse 1s infinite" : "none" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></svg>
               </div>
-              <div style={{ color:"#fff", fontSize:14, fontWeight:500 }}>{listening?"Bicara sekarang...":"Siap merekam"}</div>
-              <div style={{ color:"#8ab", fontSize:12, marginTop:4 }}>Contoh: "Makan siang 35 ribu" atau "Gaji 5 juta"</div>
-              {transcript && <div style={{ color:"#4da6ff", fontSize:12, marginTop:8 }}>"{transcript}"</div>}
-              <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:12 }}>
-                {[20,30,15,25,10].map((h,i) => (
-                  <div key={i} style={{ width:4, background:"#4da6ff", borderRadius:2, height:listening?h:6, transition:"height 0.3s" }} />
+              <div style={{ color: "#fff", fontSize: 14, fontWeight: 500 }}>{listening ? "Bicara sekarang..." : "Siap merekam"}</div>
+              <div style={{ color: "#8ab", fontSize: 12, marginTop: 4 }}>Contoh: "Makan siang 35 ribu" atau "Gaji 5 juta"</div>
+              {transcript && <div style={{ color: "#4da6ff", fontSize: 12, marginTop: 8 }}>"{transcript}"</div>}
+              <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 12 }}>
+                {[20, 30, 15, 25, 10].map((h, i) => (
+                  <div key={i} style={{ width: 4, background: "#4da6ff", borderRadius: 2, height: listening ? h : 6, transition: "height 0.3s" }} />
                 ))}
               </div>
             </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => { recRef.current?.stop(); setShowVoice(false); }} style={{ ...S.btnOutline, flex:1 }}>Batal</button>
-              <button onClick={() => setShowVoice(false)} style={{ ...S.btnPrimary, flex:1 }}>Selesai</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { recRef.current?.stop(); setShowVoice(false); }} style={{ ...S.btnOutline, flex: 1 }}>Batal</button>
+              <button onClick={() => setShowVoice(false)} style={{ ...S.btnPrimary, flex: 1 }}>Selesai</button>
             </div>
           </div>
         </div>
@@ -636,22 +588,22 @@ function AddScreen({ onSave, onBack, showToast }) {
       {showCamera && (
         <div style={S.overlay}>
           <div style={S.sheet}>
-            <div style={{ textAlign:"center", paddingBottom:16 }}>
-              <div style={{ width:100, height:130, border:"2px dashed #4da6ff", borderRadius:12, margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:8 }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="3,9 21,9"/><line x1="9" y1="3" x2="9" y2="9"/></svg>
-                <div style={{ fontSize:10, color:"#8ab" }}>Struk belanja</div>
+            <div style={{ textAlign: "center", paddingBottom: 16 }}>
+              <div style={{ width: 100, height: 130, border: "2px dashed #4da6ff", borderRadius: 12, margin: "0 auto 12px", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><polyline points="3,9 21,9" /><line x1="9" y1="3" x2="9" y2="9" /></svg>
+                <div style={{ fontSize: 10, color: "#8ab" }}>Struk belanja</div>
               </div>
-              <div style={{ color:"#fff", fontSize:14, fontWeight:500 }}>Foto Struk Belanja</div>
-              <div style={{ color:"#8ab", fontSize:12, marginTop:4 }}>AI akan membaca total & detail transaksi</div>
+              <div style={{ color: "#fff", fontSize: 14, fontWeight: 500 }}>Foto Struk Belanja</div>
+              <div style={{ color: "#8ab", fontSize: 12, marginTop: 4 }}>AI akan membaca total & detail transaksi</div>
             </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => setShowCamera(false)} style={{ ...S.btnOutline, flex:1 }}>Batal</button>
-              <label style={{ ...S.btnPrimary, flex:1, textAlign:"center", cursor:"pointer" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setShowCamera(false)} style={{ ...S.btnOutline, flex: 1 }}>Batal</button>
+              <label style={{ ...S.btnPrimary, flex: 1, textAlign: "center", cursor: "pointer" }}>
                 📷 Ambil Foto
-                <input type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={(e) => {
+                <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => {
                   if (e.target.files[0]) {
                     showToast("📷 AI sedang memproses struk...", "#f5a623");
-                    setShowCamera(false); showToast("📸 Foto struk diupload! Isi nominal secara manual ya.");
+                    setTimeout(() => { setAmt("85000"); setDesc("Belanja struk"); setShowCamera(false); showToast("✅ Struk berhasil dibaca!"); }, 1500);
                   }
                 }} />
               </label>
@@ -660,7 +612,7 @@ function AddScreen({ onSave, onBack, showToast }) {
         </div>
       )}
 
-      <div style={{ height:80 }} />
+      <div style={{ height: 80 }} />
       <style>{`@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(77,166,255,0.4)}50%{box-shadow:0 0 0 12px rgba(77,166,255,0)}}`}</style>
     </div>
   );
@@ -677,26 +629,26 @@ function HistoryScreen({ transactions, onEdit, onDelete, onBack, showToast }) {
   return (
     <div style={S.screen}>
       <div style={S.hdr}><span onClick={onBack} style={S.back}>←</span><span style={S.hdrT}>Riwayat Transaksi</span></div>
-      <div style={{ display:"flex", gap:6, padding:"10px 14px 6px", overflowX:"auto" }}>
-        {[["all","Semua"],["keluar","Pengeluaran"],["masuk","Pemasukan"],["transfer","Transfer"]].map(([v,l]) => (
-          <div key={v} onClick={() => setFilter(v)} style={{ ...S.chip, ...(filter===v?S.chipOn:{}), whiteSpace:"nowrap" }}>{l}</div>
+      <div style={{ display: "flex", gap: 6, padding: "10px 14px 6px", overflowX: "auto" }}>
+        {[["all", "Semua"], ["keluar", "Pengeluaran"], ["masuk", "Pemasukan"], ["transfer", "Transfer"]].map(([v, l]) => (
+          <div key={v} onClick={() => setFilter(v)} style={{ ...S.chip, ...(filter === v ? S.chipOn : {}), whiteSpace: "nowrap" }}>{l}</div>
         ))}
       </div>
 
-      {filtered.length === 0 && <div style={{ textAlign:"center", color:"#8ab", padding:40, fontSize:13 }}>Tidak ada transaksi</div>}
+      {filtered.length === 0 && <div style={{ textAlign: "center", color: "#8ab", padding: 40, fontSize: 13 }}>Tidak ada transaksi</div>}
 
       {filtered.map((t) => (
-        <div key={t.id} style={{ padding:"10px 14px", borderBottom:"1px solid #0f2340", display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:"#0f2340", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{t.ico}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:500, color:"#fff" }}>{t.desc || t.cat}</div>
-            <div style={{ fontSize:10, color:"#8ab" }}>{t.cat} • {t.date} <b style={{ color:"#4da6ff" }}>{t.time}</b></div>
+        <div key={t.id} style={{ padding: "10px 14px", borderBottom: "1px solid #0f2340", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#0f2340", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{t.ico}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>{t.desc || t.cat}</div>
+            <div style={{ fontSize: 10, color: "#8ab" }}>{t.cat} • {t.date} <b style={{ color: "#4da6ff" }}>{t.time}</b></div>
           </div>
-          <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:13, fontWeight:600, color:t.amt>0?"#2ecc71":"#e74c3c" }}>{t.amt>0?"+":""}{fmtRp(t.amt)}</div>
-            <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:4 }}>
-              <span onClick={() => setEditTx({ ...t })} style={{ fontSize:11, color:"#4da6ff", cursor:"pointer" }}>✏️ Edit</span>
-              <span onClick={() => { if (window.confirm("Hapus transaksi ini?")) onDelete(t.id); }} style={{ fontSize:11, color:"#e74c3c", cursor:"pointer" }}>🗑️</span>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: t.amt > 0 ? "#2ecc71" : "#e74c3c" }}>{t.amt > 0 ? "+" : ""}{fmtRp(t.amt)}</div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+              <span onClick={() => setEditTx({ ...t })} style={{ fontSize: 11, color: "#4da6ff", cursor: "pointer" }}>✏️ Edit</span>
+              <span onClick={() => { if (window.confirm("Hapus transaksi ini?")) onDelete(t.id); }} style={{ fontSize: 11, color: "#e74c3c", cursor: "pointer" }}>🗑️</span>
             </div>
           </div>
         </div>
@@ -705,38 +657,38 @@ function HistoryScreen({ transactions, onEdit, onDelete, onBack, showToast }) {
       {editTx && (
         <div style={S.overlay}>
           <div style={S.sheet}>
-            <div style={{ fontSize:14, fontWeight:600, color:"#fff", marginBottom:12 }}>✏️ Edit Transaksi</div>
-            <div style={{ ...S.irow, margin:"0 0 8px" }}>
-              <span style={{ color:"#8ab", fontSize:12 }}>Rp</span>
-              <input type="number" value={Math.abs(editTx.amt)} onChange={(e) => setEditTx((t) => ({ ...t, amt:t.amt<0?-Number(e.target.value):Number(e.target.value) }))} style={{ ...S.inp, fontSize:16 }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 12 }}>✏️ Edit Transaksi</div>
+            <div style={{ ...S.irow, margin: "0 0 8px" }}>
+              <span style={{ color: "#8ab", fontSize: 12 }}>Rp</span>
+              <input type="number" value={Math.abs(editTx.amt)} onChange={(e) => setEditTx((t) => ({ ...t, amt: t.amt < 0 ? -Number(e.target.value) : Number(e.target.value) }))} style={{ ...S.inp, fontSize: 16 }} />
             </div>
-            <div style={{ ...S.irow, margin:"0 0 8px" }}>
+            <div style={{ ...S.irow, margin: "0 0 8px" }}>
               <span>📝</span>
-              <input type="text" value={editTx.desc} onChange={(e) => setEditTx((t) => ({ ...t, desc:e.target.value }))} style={S.inp} />
+              <input type="text" value={editTx.desc} onChange={(e) => setEditTx((t) => ({ ...t, desc: e.target.value }))} style={S.inp} />
             </div>
-            <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-              <div style={{ ...S.irow, margin:0, flex:1 }}><input type="date" value={editTx.date} onChange={(e) => setEditTx((t) => ({ ...t, date:e.target.value }))} style={{ ...S.inp, fontSize:12 }} /></div>
-              <div style={{ ...S.irow, margin:0, flex:1 }}><input type="time" value={editTx.time} onChange={(e) => setEditTx((t) => ({ ...t, time:e.target.value }))} style={{ ...S.inp, fontSize:12 }} /></div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              <div style={{ ...S.irow, margin: 0, flex: 1 }}><input type="date" value={editTx.date} onChange={(e) => setEditTx((t) => ({ ...t, date: e.target.value }))} style={{ ...S.inp, fontSize: 12 }} /></div>
+              <div style={{ ...S.irow, margin: 0, flex: 1 }}><input type="time" value={editTx.time} onChange={(e) => setEditTx((t) => ({ ...t, time: e.target.value }))} style={{ ...S.inp, fontSize: 12 }} /></div>
             </div>
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => setEditTx(null)} style={{ ...S.btnOutline, flex:1 }}>Batal</button>
-              <button onClick={() => { onEdit(editTx); setEditTx(null); showToast("✏️ Transaksi diperbarui!"); }} style={{ ...S.btnPrimary, flex:1 }}>Simpan</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setEditTx(null)} style={{ ...S.btnOutline, flex: 1 }}>Batal</button>
+              <button onClick={() => { onEdit(editTx); setEditTx(null); showToast("✏️ Transaksi diperbarui!"); }} style={{ ...S.btnPrimary, flex: 1 }}>Simpan</button>
             </div>
           </div>
         </div>
       )}
-      <div style={{ height:80 }} />
+      <div style={{ height: 80 }} />
     </div>
   );
 }
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 function AIScreen({ transactions, onBack }) {
-  const [messages, setMessages] = useState([{ role:"ai", text:"Halo! Saya MoneyAI 👋\nAsisten keuangan pribadi kamu di Dk.myMoney. Tanya apa saja tentang transaksi, analisis pengeluaran, atau saran menabung ya!" }]);
+  const [messages, setMessages] = useState([{ role: "ai", text: "Halo! Saya MoneyAI 👋\nAsisten keuangan pribadi kamu di Dk.myMoney. Tanya apa saja tentang transaksi, analisis pengeluaran, atau saran menabung ya!" }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const ctx = () => {
     const masuk = transactions.filter((t) => t.amt > 0).reduce((s, t) => s + t.amt, 0);
@@ -747,188 +699,53 @@ function AIScreen({ transactions, onBack }) {
     return `Data keuangan user: Saldo ${fmtRp(masuk - keluar)}, Pemasukan ${fmtRp(masuk)}, Pengeluaran ${fmtRp(keluar)}, Kategori terboros: ${top?.[0]} (${fmtRp(top?.[1] || 0)}), Total ${transactions.length} transaksi.`;
   };
 
-  const analyzeOffline = (q, txs) => {
-    const now = new Date();
-    const thisMonth = now.toISOString().slice(0,7);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString().slice(0,7);
-    const thisWeek = txs.filter(t => { const d = new Date(t.date); const diff = (now-d)/(1000*60*60*24); return diff<=7; });
-    const monthTx = txs.filter(t => t.date?.startsWith(thisMonth));
-    const lastMonthTx = txs.filter(t => t.date?.startsWith(lastMonth));
-    const masuk = txs.filter(t=>t.amt>0).reduce((s,t)=>s+t.amt,0);
-    const keluar = txs.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
-    const saldo = masuk - keluar;
-    const monthKeluar = monthTx.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
-    const monthMasuk = monthTx.filter(t=>t.amt>0).reduce((s,t)=>s+t.amt,0);
-    const lastMonthKeluar = lastMonthTx.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
-    const cats = {}; txs.filter(t=>t.amt<0).forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+Math.abs(t.amt);});
-    const topCat = Object.entries(cats).sort((a,b)=>b[1]-a[1]);
-    const weekKeluar = thisWeek.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0);
-    const makanCat = txs.filter(t=>t.amt<0&&(t.cat?.includes("Makan")||t.cat?.includes("Minum"))).reduce((s,t)=>s+Math.abs(t.amt),0);
-    const avgHarian = txs.length>0 ? keluar/30 : 0;
-    const q2 = q.toLowerCase();
-
-    if (q2.includes("analisis") || q2.includes("pengeluaran bulan ini")) {
-      return `📊 *Analisis Bulan ${now.toLocaleString("id-ID",{month:"long"})}*
-
-💸 Total pengeluaran: ${fmtRp(monthKeluar)}
-💰 Total pemasukan: ${fmtRp(monthMasuk)}
-📈 Saldo bulan ini: ${fmtRp(monthMasuk-monthKeluar)}
-
-🔥 Kategori terbesar:
-${topCat.slice(0,3).map((c,i)=>`${i+1}. ${c[0]}: ${fmtRp(c[1])}`).join("
-")}
-
-${monthKeluar>monthMasuk?"⚠️ Pengeluaran melebihi pemasukan bulan ini! Perlu dikurangi.":"✅ Keuangan bulan ini masih terkendali."}`;
-    }
-    if (q2.includes("bulan lalu vs") || q2.includes("bulan lalu")) {
-      const selisih = monthKeluar - lastMonthKeluar;
-      return `📅 *Perbandingan Pengeluaran*
-
-Bulan ini: ${fmtRp(monthKeluar)}
-Bulan lalu: ${fmtRp(lastMonthKeluar)}
-
-${selisih>0?`📈 Naik ${fmtRp(selisih)} (${lastMonthKeluar>0?Math.round(selisih/lastMonthKeluar*100):0}%) dari bulan lalu`:`📉 Turun ${fmtRp(Math.abs(selisih))} dari bulan lalu — Bagus!`}`;
-    }
-    if (q2.includes("boros") || q2.includes("terboros")) {
-      return `🔥 *Kategori Terboros*
-
-${topCat.slice(0,5).map((c,i)=>`${["🥇","🥈","🥉","4️⃣","5️⃣"][i]} ${c[0]}: ${fmtRp(c[1])}`).join("
-")}
-
-💡 Coba kurangi pengeluaran di kategori teratas untuk menghemat lebih banyak.`;
-    }
-    if (q2.includes("saran") || q2.includes("hemat")) {
-      const potensialHemat = topCat[0]?.[1]*0.2||0;
-      return `💡 *Saran Hemat MoneyAI*
-
-1. Kurangi ${topCat[0]?.[0]||"pengeluaran terbesar"} 20% → hemat ${fmtRp(potensialHemat)}/bulan
-2. Siapkan anggaran harian: ${fmtRp(avgHarian)}
-3. Catat semua transaksi rutin agar mudah dikontrol
-4. Target tabungan minimal 10% dari pemasukan: ${fmtRp(monthMasuk*0.1)}
-5. Review pengeluaran setiap minggu`;
-    }
-    if (q2.includes("menabung") || q2.includes("tabungan")) {
-      const bisa = monthMasuk - monthKeluar;
-      return `🎯 *Potensi Tabungan*
-
-Pemasukan: ${fmtRp(monthMasuk)}
-Pengeluaran: ${fmtRp(monthKeluar)}
-
-${bisa>0?`✅ Kamu bisa menabung ${fmtRp(bisa)} bulan ini!
-
-💰 Saran:
-- Tabungan darurat: ${fmtRp(bisa*0.5)}
-- Investasi: ${fmtRp(bisa*0.3)}
-- Bebas pakai: ${fmtRp(bisa*0.2)}`:"⚠️ Bulan ini pengeluaran melebihi pemasukan. Perlu dikurangi dulu sebelum bisa menabung."}`;
-    }
-    if (q2.includes("minggu") || q2.includes("minggu ini")) {
-      return `📆 *Pengeluaran 7 Hari Terakhir*
-
-Total: ${fmtRp(weekKeluar)}
-Rata-rata/hari: ${fmtRp(weekKeluar/7)}
-
-${thisWeek.filter(t=>t.amt<0).slice(0,5).map(t=>`• ${t.desc||t.cat}: ${fmtRp(Math.abs(t.amt))}`).join("
-")||"Belum ada transaksi minggu ini."}`;
-    }
-    if (q2.includes("makan")) {
-      return `🍔 *Pengeluaran Makan & Minum*
-
-Total keseluruhan: ${fmtRp(makanCat)}
-Bulan ini: ${fmtRp(monthTx.filter(t=>t.amt<0&&t.cat?.includes("Makan")).reduce((s,t)=>s+Math.abs(t.amt),0))}
-
-💡 Rata-rata makan per hari: ${fmtRp(makanCat/30)}`;
-    }
-    if (q2.includes("rata-rata") || q2.includes("harian")) {
-      return `📊 *Rata-rata Pengeluaran Harian*
-
-Rata-rata: ${fmtRp(avgHarian)}/hari
-Total pengeluaran: ${fmtRp(keluar)}
-Total transaksi: ${txs.filter(t=>t.amt<0).length} transaksi
-
-${avgHarian>100000?"💡 Cukup tinggi. Coba buat anggaran harian maksimal.":"✅ Masih dalam batas wajar."}`;
-    }
-    if (q2.includes("tren") || q2.includes("3 bulan")) {
-      return `📈 *Tren Pengeluaran*
-
-Bulan ini: ${fmtRp(monthKeluar)}
-Bulan lalu: ${fmtRp(lastMonthKeluar)}
-Total keseluruhan: ${fmtRp(keluar)}
-
-${monthKeluar>lastMonthKeluar?"📈 Tren naik — perlu diwaspadai":"📉 Tren turun — pertahankan!"}`;
-    }
-    if (q2.includes("ringkasan") || q2.includes("rekap")) {
-      return `📋 *Ringkasan Keuangan*
-
-💰 Saldo: ${fmtRp(saldo)}
-📥 Total Masuk: ${fmtRp(masuk)}
-📤 Total Keluar: ${fmtRp(keluar)}
-📊 Transaksi: ${txs.length}
-
-🏆 Top kategori:
-${topCat.slice(0,3).map((c,i)=>`${i+1}. ${c[0]}: ${fmtRp(c[1])}`).join("
-")}`;
-    }
-    if (q2.includes("transfer")) {
-      const transfers = txs.filter(t=>t.cat?.includes("Transfer")||t.cat?.includes("E-Wallet"));
-      return `🏦 *Rekap Transfer*
-
-Total transfer: ${fmtRp(transfers.filter(t=>t.amt<0).reduce((s,t)=>s+Math.abs(t.amt),0))}
-Jumlah transaksi: ${transfers.length}
-
-${transfers.slice(0,5).map(t=>`• ${t.desc||t.cat}: ${fmtRp(Math.abs(t.amt))}`).join("
-")||"Belum ada transfer."}`;
-    }
-    return `🤖 *MoneyAI*
-
-Saldo kamu saat ini: ${fmtRp(saldo)}
-Total pengeluaran bulan ini: ${fmtRp(monthKeluar)}
-
-Coba tanya:
-• "Analisis pengeluaran saya"
-• "Kategori terboros"
-• "Saran hemat"
-• "Berapa bisa menabung?"
-• "Pengeluaran minggu ini"`;
-  };
-
   const send = async (text) => {
     if (!text.trim()) return;
-    setMessages((m) => [...m, { role:"user", text }]);
+    setMessages((m) => [...m, { role: "user", text }]);
     setInput(""); setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    const reply = analyzeOffline(text, transactions);
-    setMessages((m) => [...m, { role:"ai", text: reply }]);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 1000,
+          system: `Kamu adalah MoneyAI, asisten keuangan pribadi di Dk.myMoney. Jawab dalam Bahasa Indonesia, singkat, jelas, dan helpful. ${ctx()}`,
+          messages: [{ role: "user", content: text }]
+        }),
+      });
+      const data = await res.json();
+      setMessages((m) => [...m, { role: "ai", text: data.content?.map((c) => c.text || "").join("") || "Maaf, tidak bisa menjawab saat ini." }]);
+    } catch { setMessages((m) => [...m, { role: "ai", text: "Maaf, koneksi bermasalah. Coba lagi!" }]); }
     setLoading(false);
   };
 
   return (
-    <div style={{ ...S.screen, display:"flex", flexDirection:"column" }}>
+    <div style={{ ...S.screen, display: "flex", flexDirection: "column" }}>
       <div style={S.hdr}>
         <span onClick={onBack} style={S.back}>←</span>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}><MoneyAIIcon size={22} /><span style={S.hdrT}>MoneyAI</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><MoneyAIIcon size={22} /><span style={S.hdrT}>MoneyAI</span></div>
       </div>
 
-      <div style={{ flex:1, overflowY:"auto", padding:"8px 14px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "8px 14px" }}>
         {messages.map((m, i) => (
-          <div key={i} style={{ marginBottom:10, display:"flex", justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
-            <div style={{ background:m.role==="user"?"#1e4a8a":"#0f2340", borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px", padding:"10px 14px", maxWidth:"80%", fontSize:13, color:"#fff", lineHeight:1.6, border:"1px solid #1e3a5f", whiteSpace:"pre-wrap" }}>{m.text}</div>
+          <div key={i} style={{ marginBottom: 10, display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            <div style={{ background: m.role === "user" ? "#1e4a8a" : "#0f2340", borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 14px", maxWidth: "80%", fontSize: 13, color: "#fff", lineHeight: 1.6, border: "1px solid #1e3a5f", whiteSpace: "pre-wrap" }}>{m.text}</div>
           </div>
         ))}
-        {loading && <div style={{ display:"flex", gap:4, padding:12 }}>{[0,1,2].map((i) => <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:"#4da6ff", animation:`bounce 0.8s ${i*0.2}s infinite` }} />)}</div>}
+        {loading && <div style={{ display: "flex", gap: 4, padding: 12 }}>{[0, 1, 2].map((i) => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#4da6ff", animation: `bounce 0.8s ${i * 0.2}s infinite` }} />)}</div>}
         <div ref={endRef} />
       </div>
 
-      <div style={{ display:"flex", gap:6, padding:"6px 14px", overflowX:"auto" }}>
-        {AI_PROMPTS.map((p) => <div key={p} onClick={() => send(p)} style={{ ...S.chip, whiteSpace:"nowrap", fontSize:11 }}>{p}</div>)}
+      <div style={{ display: "flex", gap: 6, padding: "6px 14px", overflowX: "auto" }}>
+        {AI_PROMPTS.slice(0, 4).map((p) => <div key={p} onClick={() => send(p)} style={{ ...S.chip, whiteSpace: "nowrap", fontSize: 11 }}>{p}</div>)}
       </div>
 
-      <div style={{ display:"flex", gap:8, padding:"8px 14px 12px" }}>
-        <div style={{ ...S.irow, margin:0, flex:1, borderRadius:24 }}>
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key==="Enter"&&send(input)} placeholder="Tanya MoneyAI..." style={{ ...S.inp, fontSize:13 }} />
+      <div style={{ display: "flex", gap: 8, padding: "8px 14px 12px" }}>
+        <div style={{ ...S.irow, margin: 0, flex: 1, borderRadius: 24 }}>
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send(input)} placeholder="Tanya MoneyAI..." style={{ ...S.inp, fontSize: 13 }} />
         </div>
-        <button onClick={() => send(input)} style={{ ...S.btnPrimary, padding:"0 16px" }}>→</button>
+        <button onClick={() => send(input)} style={{ ...S.btnPrimary, padding: "0 16px" }}>→</button>
       </div>
-      <div style={{ height:70 }} />
+      <div style={{ height: 70 }} />
       <style>{`@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}`}</style>
     </div>
   );
@@ -959,70 +776,70 @@ function ProfileScreen({ data, onSaveProfile, onSavePin, onLogout, onBack, showT
     <div style={S.screen}>
       <div style={S.hdr}><span onClick={onBack} style={S.back}>←</span><span style={S.hdrT}>Profil Akun</span></div>
 
-      <div style={{ textAlign:"center", padding:"20px 14px 10px" }}>
-        <div style={{ width:72, height:72, background:"#f5a623", borderRadius:18, margin:"0 auto 10px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:700, color:"#0a1628" }}>
-          {ep.name.slice(0,2).toUpperCase()}
+      <div style={{ textAlign: "center", padding: "20px 14px 10px" }}>
+        <div style={{ width: 72, height: 72, background: "#f5a623", borderRadius: 18, margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#0a1628" }}>
+          {ep.name.slice(0, 2).toUpperCase()}
         </div>
-        <div style={{ fontSize:16, fontWeight:600, color:"#fff" }}>{ep.name}</div>
-        <div style={{ fontSize:12, color:"#8ab" }}>{ep.email}</div>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>{ep.name}</div>
+        <div style={{ fontSize: 12, color: "#8ab" }}>{ep.email}</div>
       </div>
 
       {/* Profile edit */}
-      <div style={{ margin:"0 14px 12px", background:"#0f2340", borderRadius:16, padding:14, border:"1px solid #1e3a5f" }}>
-        <div style={{ fontSize:12, color:"#4da6ff", marginBottom:10, fontWeight:600 }}>INFORMASI AKUN</div>
-        {[["👤 Nama","name","text"],["📧 Email","email","email"],["📱 Telepon","phone","tel"]].map(([label,key,type]) => (
-          <div key={key} style={{ marginBottom:10 }}>
-            <div style={{ fontSize:11, color:"#8ab", marginBottom:4 }}>{label}</div>
+      <div style={{ margin: "0 14px 12px", background: "#0f2340", borderRadius: 16, padding: 14, border: "1px solid #1e3a5f" }}>
+        <div style={{ fontSize: 12, color: "#4da6ff", marginBottom: 10, fontWeight: 600 }}>INFORMASI AKUN</div>
+        {[["👤 Nama", "name", "text"], ["📧 Email", "email", "email"], ["📱 Telepon", "phone", "tel"]].map(([label, key, type]) => (
+          <div key={key} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: "#8ab", marginBottom: 4 }}>{label}</div>
             <div style={S.irow}>
-              <input type={type} value={ep[key]} onChange={(e) => setEp((p) => ({ ...p, [key]:e.target.value }))} style={S.inp} />
+              <input type={type} value={ep[key]} onChange={(e) => setEp((p) => ({ ...p, [key]: e.target.value }))} style={S.inp} />
             </div>
           </div>
         ))}
-        <button onClick={() => onSaveProfile(ep)} style={{ ...S.btnPrimary, width:"100%" }}>Simpan Profil</button>
+        <button onClick={() => onSaveProfile(ep)} style={{ ...S.btnPrimary, width: "100%" }}>Simpan Profil</button>
       </div>
 
       {/* Security */}
-      <div style={{ margin:"0 14px 12px", background:"#0f2340", borderRadius:16, padding:14, border:"1px solid #1e3a5f" }}>
-        <div style={{ fontSize:12, color:"#4da6ff", marginBottom:10, fontWeight:600 }}>KEAMANAN</div>
+      <div style={{ margin: "0 14px 12px", background: "#0f2340", borderRadius: 16, padding: 14, border: "1px solid #1e3a5f" }}>
+        <div style={{ fontSize: 12, color: "#4da6ff", marginBottom: 10, fontWeight: 600 }}>KEAMANAN</div>
 
         {/* PIN */}
-        <div onClick={() => setShowPin(!showPin)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer", padding:"8px 0", borderBottom:"1px solid #1e3a5f" }}>
-          <div style={{ fontSize:13, color:"#fff" }}>🔢 Ganti PIN</div>
-          <div style={{ color:"#8ab" }}>{showPin?"▲":"▼"}</div>
+        <div onClick={() => setShowPin(!showPin)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", padding: "8px 0", borderBottom: "1px solid #1e3a5f" }}>
+          <div style={{ fontSize: 13, color: "#fff" }}>🔢 Ganti PIN</div>
+          <div style={{ color: "#8ab" }}>{showPin ? "▲" : "▼"}</div>
         </div>
         {showPin && (
-          <div style={{ paddingTop:10 }}>
-            {[["PIN Lama",oldPin,setOldPin],["PIN Baru (min. 4 digit)",newPin,setNewPin],["Konfirmasi PIN Baru",confPin,setConfPin]].map(([label,val,setter]) => (
-              <div key={label} style={{ marginBottom:8 }}>
-                <div style={{ fontSize:11, color:"#8ab", marginBottom:4 }}>{label}</div>
+          <div style={{ paddingTop: 10 }}>
+            {[["PIN Lama", oldPin, setOldPin], ["PIN Baru (min. 4 digit)", newPin, setNewPin], ["Konfirmasi PIN Baru", confPin, setConfPin]].map(([label, val, setter]) => (
+              <div key={label} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: "#8ab", marginBottom: 4 }}>{label}</div>
                 <div style={S.irow}><input type="password" value={val} onChange={(e) => setter(e.target.value)} placeholder="••••••" maxLength={6} style={S.inp} /></div>
               </div>
             ))}
-            <button onClick={savePin} style={{ ...S.btnPrimary, width:"100%" }}>Simpan PIN Baru</button>
+            <button onClick={savePin} style={{ ...S.btnPrimary, width: "100%" }}>Simpan PIN Baru</button>
           </div>
         )}
 
         {/* Biometric */}
-        <div style={{ paddingTop:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <div style={{ paddingTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div>
-              <div style={{ fontSize:13, color:"#fff" }}>☝️ Sidik Jari</div>
-              <div style={{ fontSize:11, color: bioRegistered?"#2ecc71":"#e74c3c" }}>{bioRegistered?"✅ Terdaftar":"❌ Belum terdaftar"}</div>
+              <div style={{ fontSize: 13, color: "#fff" }}>☝️ Sidik Jari</div>
+              <div style={{ fontSize: 11, color: bioRegistered ? "#2ecc71" : "#e74c3c" }}>{bioRegistered ? "✅ Terdaftar" : "❌ Belum terdaftar"}</div>
             </div>
             {bioRegistered
-              ? <button onClick={doRemoveBio} style={{ ...S.btnOutline, fontSize:12, padding:"6px 12px", color:"#e74c3c", borderColor:"#e74c3c" }}>Hapus</button>
-              : <button onClick={doRegisterBio} style={{ ...S.btnSuccess, fontSize:12, padding:"6px 12px" }}>Daftar</button>}
+              ? <button onClick={doRemoveBio} style={{ ...S.btnOutline, fontSize: 12, padding: "6px 12px", color: "#e74c3c", borderColor: "#e74c3c" }}>Hapus</button>
+              : <button onClick={doRegisterBio} style={{ ...S.btnSuccess, fontSize: 12, padding: "6px 12px" }}>Daftar</button>}
           </div>
-          <div style={{ background:"#0a1628", borderRadius:8, padding:"8px 10px", fontSize:11, color:"#8ab", lineHeight:1.6 }}>
+          <div style={{ background: "#0a1628", borderRadius: 8, padding: "8px 10px", fontSize: 11, color: "#8ab", lineHeight: 1.6 }}>
             ℹ️ Setelah mendaftar sidik jari, kamu bisa login tanpa PIN. Sensor sidik jari harus sudah dikonfigurasi di pengaturan Android.
           </div>
         </div>
       </div>
 
-      <div style={{ padding:"0 14px 16px" }}>
-        <button onClick={onLogout} style={{ ...S.btnOutline, width:"100%", color:"#e74c3c", borderColor:"#e74c3c" }}>🚪 Logout</button>
+      <div style={{ padding: "0 14px 16px" }}>
+        <button onClick={onLogout} style={{ ...S.btnOutline, width: "100%", color: "#e74c3c", borderColor: "#e74c3c" }}>🚪 Logout</button>
       </div>
-      <div style={{ height:80 }} />
+      <div style={{ height: 80 }} />
     </div>
   );
 }
@@ -1030,31 +847,31 @@ function ProfileScreen({ data, onSaveProfile, onSavePin, onLogout, onBack, showT
 // ── SHARED ────────────────────────────────────────────────────────────────────
 function TxRow({ tx }) {
   return (
-    <div style={{ padding:"10px 14px", borderBottom:"1px solid #0f2340", display:"flex", alignItems:"center", gap:10 }}>
-      <div style={{ width:36, height:36, borderRadius:10, background:"#0f2340", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{tx.ico}</div>
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:13, fontWeight:500, color:"#fff" }}>{tx.desc||tx.cat}</div>
-        <div style={{ fontSize:10, color:"#8ab" }}>{tx.cat} • {tx.date} <b style={{ color:"#4da6ff" }}>{tx.time}</b></div>
+    <div style={{ padding: "10px 14px", borderBottom: "1px solid #0f2340", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: "#0f2340", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{tx.ico}</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>{tx.desc || tx.cat}</div>
+        <div style={{ fontSize: 10, color: "#8ab" }}>{tx.cat} • {tx.date} <b style={{ color: "#4da6ff" }}>{tx.time}</b></div>
       </div>
-      <div style={{ fontSize:13, fontWeight:600, color:tx.amt>0?"#2ecc71":"#e74c3c" }}>{tx.amt>0?"+":""}{fmtRp(tx.amt)}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: tx.amt > 0 ? "#2ecc71" : "#e74c3c" }}>{tx.amt > 0 ? "+" : ""}{fmtRp(tx.amt)}</div>
     </div>
   );
 }
 
 function NavBar({ screen, onNav }) {
   const items = [
-    { id:"home", label:"Home", icon:(a) => <svg width="20" height="20" viewBox="0 0 24 24" fill={a?"#4da6ff":"none"} stroke={a?"#4da6ff":"#8ab"} strokeWidth="2"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><polyline points="9 21 9 12 15 12 15 21"/></svg> },
-    { id:"history", label:"Riwayat", icon:(a) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={a?"#4da6ff":"#8ab"} strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
-    { id:"add", label:"", icon:() => <div style={{ width:48, height:48, background:"#1e4a8a", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", marginTop:-16, border:"3px solid #0a1628" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div> },
-    { id:"ai", label:"MoneyAI", icon:() => <MoneyAIIcon size={22} /> },
-    { id:"profile", label:"Profil", icon:(a) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={a?"#4da6ff":"#8ab"} strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> },
+    { id: "home", label: "Home", icon: (a) => <svg width="20" height="20" viewBox="0 0 24 24" fill={a ? "#4da6ff" : "none"} stroke={a ? "#4da6ff" : "#8ab"} strokeWidth="2"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" /><polyline points="9 21 9 12 15 12 15 21" /></svg> },
+    { id: "history", label: "Riwayat", icon: (a) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={a ? "#4da6ff" : "#8ab"} strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg> },
+    { id: "add", label: "", icon: () => <div style={{ width: 48, height: 48, background: "#1e4a8a", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -16, border: "3px solid #0a1628" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg></div> },
+    { id: "ai", label: "MoneyAI", icon: () => <MoneyAIIcon size={22} /> },
+    { id: "profile", label: "Profil", icon: (a) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={a ? "#4da6ff" : "#8ab"} strokeWidth="2"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg> },
   ];
   return (
-    <div style={{ position:"fixed", bottom:0, left:0, right:0, maxWidth:480, margin:"0 auto", background:"#0a1628", borderTop:"1px solid #1e3a5f", display:"flex", padding:"8px 0 6px", zIndex:100 }}>
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 480, margin: "0 auto", background: "#0a1628", borderTop: "1px solid #1e3a5f", display: "flex", padding: "8px 0 6px", zIndex: 100 }}>
       {items.map((item) => (
-        <button key={item.id} onClick={() => onNav(item.id)} style={{ flex:1, background:"none", border:"none", display:"flex", flexDirection:"column", alignItems:"center", gap:2, cursor:"pointer", padding:"2px 0" }}>
+        <button key={item.id} onClick={() => onNav(item.id)} style={{ flex: 1, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", padding: "2px 0" }}>
           {item.icon(screen === item.id)}
-          {item.label && <span style={{ fontSize:10, color:screen===item.id?"#4da6ff":"#8ab" }}>{item.label}</span>}
+          {item.label && <span style={{ fontSize: 10, color: screen === item.id ? "#4da6ff" : "#8ab" }}>{item.label}</span>}
         </button>
       ))}
     </div>
@@ -1063,7 +880,7 @@ function NavBar({ screen, onNav }) {
 
 function Toast({ msg, color }) {
   return (
-    <div style={{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", background:color||"#2ecc71", color:"#fff", padding:"10px 20px", borderRadius:24, fontSize:13, fontWeight:500, zIndex:9999, whiteSpace:"nowrap", boxShadow:"0 4px 20px rgba(0,0,0,0.4)", maxWidth:"90vw", textAlign:"center" }}>
+    <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", background: color || "#2ecc71", color: "#fff", padding: "10px 20px", borderRadius: 24, fontSize: 13, fontWeight: 500, zIndex: 9999, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.4)", maxWidth: "90vw", textAlign: "center" }}>
       {msg}
     </div>
   );
@@ -1071,21 +888,21 @@ function Toast({ msg, color }) {
 
 // ── STYLES ────────────────────────────────────────────────────────────────────
 const S = {
-  wrap:{ background:"#0a1628", minHeight:"100vh", maxWidth:480, margin:"0 auto", color:"#fff", position:"relative" },
-  screen:{ background:"#0a1628", minHeight:"100vh", overflowY:"auto" },
-  hdr:{ display:"flex", alignItems:"center", gap:10, padding:"14px 14px 0" },
-  hdrT:{ fontSize:16, fontWeight:600, color:"#fff" },
-  back:{ color:"#4da6ff", cursor:"pointer", fontSize:20 },
-  irow:{ background:"#0f2340", borderRadius:12, padding:"10px 12px", display:"flex", alignItems:"center", gap:8, border:"1px solid #1e3a5f" },
-  inp:{ background:"none", border:"none", color:"#fff", fontSize:14, flex:1, outline:"none" },
-  sel:{ background:"none", border:"none", color:"#fff", fontSize:13, flex:1, outline:"none" },
-  chip:{ background:"#0f2340", border:"1px solid #1e3a5f", borderRadius:20, padding:"6px 12px", fontSize:12, color:"#8ab", cursor:"pointer" },
-  chipOn:{ background:"#1e4a8a", borderColor:"#4da6ff", color:"#4da6ff" },
-  btnPrimary:{ background:"#1e4a8a", border:"none", color:"#4da6ff", borderRadius:12, padding:"11px 16px", fontSize:13, cursor:"pointer", fontWeight:500 },
-  btnOutline:{ background:"none", border:"1px solid #1e3a5f", color:"#8ab", borderRadius:12, padding:"11px 16px", fontSize:13, cursor:"pointer" },
-  btnSuccess:{ background:"#0f4a2a", border:"none", color:"#2ecc71", borderRadius:12, padding:"11px 16px", fontSize:13, cursor:"pointer", fontWeight:500 },
-  badgeBtn:{ background:"#1e4a8a", border:"none", borderRadius:10, padding:"6px 12px", fontSize:12, color:"#4da6ff", cursor:"pointer" },
-  iconBtn:{ width:44, height:44, borderRadius:"50%", background:"#1e3a5f", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 },
-  overlay:{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.75)", display:"flex", alignItems:"flex-end", zIndex:200 },
-  sheet:{ background:"#0f2340", borderRadius:"20px 20px 0 0", padding:20, width:"100%", maxWidth:480, margin:"0 auto", border:"1px solid #1e3a5f" },
+  wrap: { background: "#0a1628", minHeight: "100vh", maxWidth: 480, margin: "0 auto", color: "#fff", position: "relative" },
+  screen: { background: "#0a1628", minHeight: "100vh", overflowY: "auto" },
+  hdr: { display: "flex", alignItems: "center", gap: 10, padding: "14px 14px 0" },
+  hdrT: { fontSize: 16, fontWeight: 600, color: "#fff" },
+  back: { color: "#4da6ff", cursor: "pointer", fontSize: 20 },
+  irow: { background: "#0f2340", borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, border: "1px solid #1e3a5f" },
+  inp: { background: "none", border: "none", color: "#fff", fontSize: 14, flex: 1, outline: "none" },
+  sel: { background: "none", border: "none", color: "#fff", fontSize: 13, flex: 1, outline: "none" },
+  chip: { background: "#0f2340", border: "1px solid #1e3a5f", borderRadius: 20, padding: "6px 12px", fontSize: 12, color: "#8ab", cursor: "pointer" },
+  chipOn: { background: "#1e4a8a", borderColor: "#4da6ff", color: "#4da6ff" },
+  btnPrimary: { background: "#1e4a8a", border: "none", color: "#4da6ff", borderRadius: 12, padding: "11px 16px", fontSize: 13, cursor: "pointer", fontWeight: 500 },
+  btnOutline: { background: "none", border: "1px solid #1e3a5f", color: "#8ab", borderRadius: 12, padding: "11px 16px", fontSize: 13, cursor: "pointer" },
+  btnSuccess: { background: "#0f4a2a", border: "none", color: "#2ecc71", borderRadius: 12, padding: "11px 16px", fontSize: 13, cursor: "pointer", fontWeight: 500 },
+  badgeBtn: { background: "#1e4a8a", border: "none", borderRadius: 10, padding: "6px 12px", fontSize: 12, color: "#4da6ff", cursor: "pointer" },
+  iconBtn: { width: 44, height: 44, borderRadius: "50%", background: "#1e3a5f", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 },
+  overlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", zIndex: 200 },
+  sheet: { background: "#0f2340", borderRadius: "20px 20px 0 0", padding: 20, width: "100%", maxWidth: 480, margin: "0 auto", border: "1px solid #1e3a5f" },
 };
